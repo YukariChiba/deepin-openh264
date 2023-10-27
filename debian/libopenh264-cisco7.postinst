@@ -1,0 +1,71 @@
+#!/bin/sh
+# postinst script for openh264
+#
+# see: dh_installdeb(1)
+
+set -e
+
+VER=$(dpkg-query --show --showformat='${Version}' $DPKG_MAINTSCRIPT_PACKAGE | cut -d+ -f1)
+case "$DPKG_MAINTSCRIPT_ARCH" in
+### CHANGE SHA256SUMs FOR EACH NEW VER ###
+    i386)  ARCH="32"
+           MULTIARCH="i386-linux-gnu"
+           SHA256SUM="896691fbd860275d099b015635bd48dfd9e7564e69b795b9b218ae54bd2033e8"
+    ;;
+    amd64) ARCH="64"
+           MULTIARCH="x86_64-linux-gnu"
+           SHA256SUM="114b9cf8903351ead2b041a11b3012668312180f281cf27bfac7e20c05a721fc"
+    ;;
+    armhf) ARCH="-arm"
+           MULTIARCH="arm-linux-gnueabihf"
+           SHA256SUM="82c56f8eb4f824c7f034cc72bba1805ee832613f98634209d9c4847d68de9e4f"
+    ;;
+    *)     ARCH="-$DPKG_MAINTSCRIPT_ARCH"
+           MULTIARCH="aarch64-linux-gnu"
+           SHA256SUM="3ccdd1afb0dde82ca79b56cafe546a5f2c688c00f23f4838e49f4159af2a93d8"
+esac
+URL="http://ciscobinary.openh264.org/libopenh264-${VER}-linux${ARCH}.7.so.bz2"
+
+download_verify_extract()
+{
+TMPFL="$(mktemp).bz2"
+
+PROXY=$(apt-config shell http_proxy Acquire::http::Proxy)
+if [ -n "$PROXY" ]; then
+    eval export $PROXY
+fi
+
+if ! wget -T 60 -O "$TMPFL" "$URL"; then
+    echo "$0: Some problem occurred during the download." >&2
+    exit 1
+fi
+
+if ! echo "$SHA256SUM  $TMPFL" | sha256sum -c ; then
+    echo "$0: The download could not be verified." >&2
+    exit 1
+fi
+
+if ! bzcat $TMPFL > /usr/lib/$MULTIARCH/libopenh264.so.7 ; then
+    echo "$0: Error on unpacking." >&2
+    exit 1
+fi
+
+rm -f $TMPFL
+}
+
+case "$1" in
+    configure) download_verify_extract
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

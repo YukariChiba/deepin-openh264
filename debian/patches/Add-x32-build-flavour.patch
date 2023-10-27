@@ -1,0 +1,102 @@
+From: Laurent Bigonville <bigon@debian.org>
+Date: Fri, 17 Jun 2022 05:42:01 +0000
+Forwarded: https://github.com/cisco/openh264/issues/3545
+Subject: FTBFS on x32 architecture
+
+Hello,
+
+openh264 FTBFS on debian x32 architecture:
+
+The issue is caused by two things:
+
+ 1. The -m64 flag passed to the compiler, on this architecture it should either be -mx32or no flag at all should be passed
+ 2. When calling nasm, the elf64 format is used, it should be elfx32 here again
+
+A new flavour of x86 should be added here
+---
+Index: openh264-2.2.0+dfsg/build/platform-linux.mk
+===================================================================
+--- openh264-2.2.0+dfsg.orig/build/platform-linux.mk
++++ openh264-2.2.0+dfsg/build/platform-linux.mk
+@@ -13,6 +13,8 @@ AR_OPTS = crD $@
+ ifeq ($(ASM_ARCH), x86)
+ ifeq ($(ARCH), x86_64)
+ ASMFLAGS += -f elf64
++else ifeq ($(ARCH), x32)
++ASMFLAGS += -f elfx32
+ else
+ ASMFLAGS += -f elf
+ endif
+Index: openh264-2.2.0+dfsg/codec/common/x86/asm_inc.asm
+===================================================================
+--- openh264-2.2.0+dfsg.orig/codec/common/x86/asm_inc.asm
++++ openh264-2.2.0+dfsg/codec/common/x86/asm_inc.asm
+@@ -135,6 +135,9 @@ BITS 64
+ %ifidn __OUTPUT_FORMAT__,elf64
+ SECTION .note.GNU-stack noalloc noexec nowrite progbits ; Mark the stack as non-executable
+ %endif
++%ifidn __OUTPUT_FORMAT__,elfx32
++SECTION .note.GNU-stack noalloc noexec nowrite progbits ; Mark the stack as non-executable
++%endif
+ 
+ %define arg1 rdi
+ %define arg2 rsi
+Index: openh264-2.2.0+dfsg/build/x86-common.mk
+===================================================================
+--- openh264-2.2.0+dfsg.orig/build/x86-common.mk
++++ openh264-2.2.0+dfsg/build/x86-common.mk
+@@ -1,5 +1,6 @@
+ CFLAGS_M32=-m32
+ CFLAGS_M64=-m64
++CFLAGS_MX32=-mx32
+ ASM_INCLUDES = -I$(SRC_PATH)codec/common/x86/
+ ifneq ($(ENABLE64BIT),)
+ ifeq ($(ENABLE64BIT), Yes)
+@@ -12,6 +13,10 @@ ifeq ($(ARCH), x86_64)
+ CFLAGS += $(CFLAGS_M64)
+ LDFLAGS += $(CFLAGS_M64)
+ ASMFLAGS_PLATFORM = -DUNIX64
++else ifeq ($(ARCH), x32)
++CFLAGS += $(CFLAGS_MX32)
++LDFLAGS += $(CFLAGS_MX32)
++ASMFLAGS_PLATFORM = -DUNIX64
+ else
+ CFLAGS += $(CFLAGS_M32)
+ LDFLAGS += $(CFLAGS_M32)
+@@ -24,7 +29,7 @@ endif
+ endif
+ ifeq ($(USE_ASM),Yes)
+ CFLAGS += -DX86_ASM
+-ifneq ($(ARCH), x86_64)
++ifeq ($(filter x86_64 x32, $(ARCH)),)
+ CFLAGS += -DX86_32_ASM
+ endif
+ ASM_ARCH = x86
+Index: openh264-2.2.0+dfsg/Makefile
+===================================================================
+--- openh264-2.2.0+dfsg.orig/Makefile
++++ openh264-2.2.0+dfsg/Makefile
+@@ -7,8 +7,8 @@ vpath %.S $(SRC_PATH)
+ vpath %.rc $(SRC_PATH)
+ vpath %.pc.in $(SRC_PATH)
+ 
+-OS=$(shell uname | tr A-Z a-z | tr -d \\-0-9. | sed -E 's/^(net|open|free)bsd/bsd/')
+-ARCH=$(shell uname -m)
++OS?=$(shell uname | tr A-Z a-z | tr -d \\-0-9. | sed -E 's/^(net|open|free)bsd/bsd/')
++ARCH?=$(shell uname -m)
+ LIBPREFIX=lib
+ LIBSUFFIX=a
+ CCAS=$(CC)
+Index: openh264-2.2.0+dfsg/build/arch.mk
+===================================================================
+--- openh264-2.2.0+dfsg.orig/build/arch.mk
++++ openh264-2.2.0+dfsg/build/arch.mk
+@@ -1,7 +1,7 @@
+ #for x86
+ HAVE_AVX2 := Yes
+ 
+-ifneq ($(filter %86 x86_64, $(ARCH)),)
++ifneq ($(filter %86 x86_64 x32, $(ARCH)),)
+ include $(SRC_PATH)build/x86-common.mk
+ ifeq ($(USE_ASM), Yes)
+ ifeq ($(HAVE_AVX2), Yes)

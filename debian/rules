@@ -1,4 +1,30 @@
 #!/usr/bin/make -f
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+CFLAGS=$(shell dpkg-buildflags --get CFLAGS)
+CPPFLAGS=$(shell dpkg-buildflags --get CPPFLAGS)
+
+DPKG_EXPORT_BUILDTOOLS=1
+-include /usr/share/dpkg/buildtools.mk
+
+ifeq ($(DEB_HOST_ARCH),amd64)
+export ARCH=x86_64
+else
+export ARCH=$(DEB_HOST_ARCH)
+endif
+
 %:
 	dh $@
+
+override_dh_auto_build:
+	dh_auto_build -- \
+		LIBDIR_NAME=lib/$(DEB_HOST_MULTIARCH) \
+		CFLAGS_OPT="$(CFLAGS) $(CPPFLAGS)"
+
+override_dh_auto_install:
+	dh_auto_install -- PREFIX=/usr \
+		LIBDIR_NAME=lib/$(DEB_HOST_MULTIARCH) \
+		SHAREDLIB_DIR=/usr/lib/$(DEB_HOST_MULTIARCH)
+
+override_dh_installchangelogs:
+	dh_installchangelogs RELEASES

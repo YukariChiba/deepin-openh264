@@ -1,0 +1,22 @@
+From: Bastian Germann <bage@debian.org>
+Date: Fri, 8 Oct 2021 01:34:20 +0200
+Forwarded: not-needed
+Subject: Do not generate version from git
+
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index dd4e930..e88b00a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -160,7 +160,7 @@ COMMON_UNITTEST_CFLAGS += $(CODEC_UNITTEST_CFLAGS)
+ .PHONY: test gtest-bootstrap clean $(PROJECT_NAME).pc $(PROJECT_NAME)-static.pc
+ 
+ generate-version:
+-	$(QUIET)sh $(SRC_PATH)codec/common/generate_version.sh $(SRC_PATH)
++	sed 's/\$$FULL_VERSION/"$(FULL_VERSION)"/' codec/common/inc/version_gen.h.template > codec/common/inc/version_gen.h
+ 
+ codec/decoder/plus/src/welsDecoderExt.$(OBJ): | generate-version
+ codec/encoder/plus/src/welsEncoderExt.$(OBJ): | generate-version

@@ -1,0 +1,4 @@
+Add-x32-build-flavour.patch
+Correct-.pc-s-libdir.patch
+Do-not-generate-version-from-git.patch
+Prevent-building-armel-with-NEON.patch

@@ -1,0 +1,21 @@
+From: Bastian Germann <bage@debian.org>
+Date: Mon, 28 Nov 2022 18:59:31 +0100
+Subject: Prevent building armel with NEON
+
+---
+ build/arch.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build/arch.mk b/build/arch.mk
+index 4e1538c..5380494 100644
+--- a/build/arch.mk
++++ b/build/arch.mk
+@@ -13,7 +13,7 @@ endif
+ endif
+ 
+ #for arm
+-ifneq ($(filter-out arm64 arm64e, $(filter arm%, $(ARCH))),)
++ifneq ($(filter-out arm64 arm64e armel, $(filter arm%, $(ARCH))),)
+ ifeq ($(USE_ASM), Yes)
+ ASM_ARCH = arm
+ ASMFLAGS += -I$(SRC_PATH)codec/common/arm/

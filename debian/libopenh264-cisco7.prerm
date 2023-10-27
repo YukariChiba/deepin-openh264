@@ -1,0 +1,10 @@
+#!/bin/sh
+# prerm script for openh264
+
+set -e
+
+rm -f /usr/lib/libopenh264.so.7
+
+#DEBHELPER#
+
+exit 0
